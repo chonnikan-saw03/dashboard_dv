@@ -92,7 +92,7 @@ with main_col1:
     failed = len(filtered_df[filtered_df['Status'] == 'ตรวจเช็คไม่ผ่าน'])
     total_tasks = len(filtered_df)
     
-    # พ่นกล่อง KPI สไตล์ Custom HTML แทนอันเดิม
+    # พ่นกล่อง KPI สไตล์ Custom HTML
     st.markdown(f"""
     <div class="kpi-card">
         <div class="kpi-title">🏢 อาคาร / ห้องทั้งหมด</div>
@@ -151,7 +151,7 @@ with main_col2:
                 yaxis=dict(showgrid=False, title=""),      
                 margin=dict(l=10, r=10, t=10, b=10)
             )
-            fig_bar.update_traces(textposition='outside', marker_radius=5)
+            fig_bar.update_traces(textposition='outside')
             st.plotly_chart(fig_bar, use_container_width=True)
         else:
             st.info("ไม่มีข้อมูล")
