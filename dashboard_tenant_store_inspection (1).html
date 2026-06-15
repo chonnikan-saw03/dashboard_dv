@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สรุปตรวจเช็คร้านค้าเช่า - Dashboard Overview</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts (Sarabun & Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Sarabun', 'Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            navy: '#1a4f76',
+                            blue: '#4a90e2',
+                            orange: '#f5a623',
+                            green: '#2ecc71',
+                            red: '#e74c3c'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for professional look */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col antialiased">
+
+    <!-- Main Content Container with Sidebar -->
+    <div class="flex-1 flex flex-col lg:flex-row">
+        
+        <!-- Left Pane: Dashboard Visualization & Detail Table -->
+        <main class="flex-1 p-4 overflow-y-auto space-y-4">
+            
+            <!-- Dashboard Title Banner -->
+            <div class="bg-[#f5e6d3]/60 border border-[#e6d0b5] rounded-lg p-3 text-center shadow-sm">
+                <h1 class="text-lg md:text-xl font-bold text-[#5c4028] tracking-wide">
+                    สรุปตรวจเช็คร้านค้าเช่า
+                </h1>
+            </div>
+
+            <!-- Metrics & Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                
+                <!-- Card 1: จำนวนอาคาร / จำนวนห้อง -->
+                <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="bg-[#4a90e2] text-white text-xs font-semibold text-center py-2 px-3">
+                        จำนวนอาคาร / จำนวนห้อง
+                    </div>
+                    <div class="flex-1 flex flex-col items-center justify-center p-5 bg-gradient-to-b from-white to-slate-50/50">
+                        <div class="text-slate-500 text-xs mb-1">ความครอบคลุมในการดูแล</div>
+                        <div class="text-xl md:text-2xl font-bold text-slate-800">
+                            <span class="text-blue-600 text-3xl font-extrabold" id="metric-buildings">8</span> อาคาร / 
+                            <span class="text-indigo-600 text-3xl font-extrabold" id="metric-rooms">110</span> ห้อง
+                        </div>
+                    </div>
+                    <!-- Chart: จำนวนอาคาร / จำนวนห้อง by สาขา -->
+                    <div class="p-3 border-t border-slate-100 bg-slate-50/50">
+                        <div class="text-[11px] font-bold text-slate-500 mb-2 text-center">จำนวนอาคาร / จำนวนห้อง by สาขา</div>
+                        <div class="h-44 relative">
+                            <canvas id="chartBranchRooms"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Status Metrics & Pie Chart -->
+                <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="bg-[#f5a623] text-white text-xs font-semibold text-center py-2 px-3">
+                        Status
+                    </div>
+                    
+                    <!-- Top Summary Stats in Orange Card -->
+                    <div class="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100 text-center py-3 bg-amber-50/20">
+                        <div>
+                            <div class="text-[10px] text-slate-500 font-bold mb-0.5">ตรวจเช็คผ่าน</div>
+                            <div class="text-base font-black text-slate-800" id="metric-passed">3,485</div>
+                            <span class="text-[9px] text-slate-400">Task</span>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-slate-500 font-bold mb-0.5">ตรวจเปิดไม่ผ่าน</div>
+                            <div class="text-base font-black text-slate-800" id="metric-failed">79</div>
+                            <span class="text-[9px] text-slate-400">Task</span>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-slate-500 font-bold mb-0.5">Other</div>
+                            <div class="text-base font-black text-slate-800" id="metric-other">69</div>
+                            <span class="text-[9px] text-slate-400">Task</span>
+                        </div>
+                    </div>
+
+                    <!-- Pie Chart: % Status -->
+                    <div class="flex-1 p-3 flex flex-col justify-between">
+                        <div class="bg-[#fbeedb] text-[#7c3a03] text-[10px] font-bold text-center py-1 rounded mb-2">% Status</div>
+                        <div class="h-44 relative flex items-center justify-center">
+                            <canvas id="chartPieStatus" class="max-h-full"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Status by Branch (Table and Interactive Percentage Status) -->
+                <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="bg-slate-500 text-white text-xs font-semibold text-center py-2 px-3">
+                        Status by สาขา
+                    </div>
+                    
+                    <!-- Small Status Matrix -->
+                    <div class="p-2 overflow-x-auto bg-slate-50/20">
+                        <table class="w-full text-[10px] text-left">
+                            <thead>
+                                <tr class="text-slate-400 border-b border-slate-100 text-[9px] uppercase font-bold">
+                                    <th class="py-1">สาขา</th>
+                                    <th class="py-1 text-right text-emerald-600">ตรวจเช็คผ่าน</th>
+                                    <th class="py-1 text-right text-rose-500">ตรวจเช็คไม่ผ่าน</th>
+                                    <th class="py-1 text-right text-slate-500">Other</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 font-medium text-slate-600" id="branch-status-matrix">
+                                <tr>
+                                    <td class="py-1 font-semibold text-slate-700">เกษตร-นวมินทร์</td>
+                                    <td class="py-1 text-right text-emerald-600">641</td>
+                                    <td class="py-1 text-right text-rose-500">24</td>
+                                    <td class="py-1 text-right text-slate-400">31</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1 font-semibold text-slate-700">บางนา</td>
+                                    <td class="py-1 text-right text-emerald-600">711</td>
+                                    <td class="py-1 text-right text-rose-500">52</td>
+                                    <td class="py-1 text-right text-slate-400">6</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1 font-semibold text-slate-700">พุทธมณฑล</td>
+                                    <td class="py-1 text-right text-emerald-600">1,176</td>
+                                    <td class="py-1 text-right text-rose-500">2</td>
+                                    <td class="py-1 text-right text-slate-400">3</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1 font-semibold text-slate-700">รัชดา</td>
+                                    <td class="py-1 text-right text-emerald-600">849</td>
+                                    <td class="py-1 text-right text-rose-500">22</td>
+                                    <td class="py-1 text-right text-slate-400">22</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1 font-semibold text-slate-700">ราชพฤกษ์</td>
+                                    <td class="py-1 text-right text-emerald-600">108</td>
+                                    <td class="py-1 text-right text-rose-500">1</td>
+                                    <td class="py-1 text-right text-slate-400 font-semibold">7</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Progress Status Chart by Branch -->
+                    <div class="p-3 border-t border-slate-100 flex-1 flex flex-col justify-end bg-slate-50/30">
+                        <div class="bg-slate-100 text-slate-700 text-[10px] font-bold text-center py-1 rounded mb-2">% Status by สาขา</div>
+                        <div class="h-44 relative">
+                            <canvas id="chartBranchPercent"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Details Table Section -->
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-2">
+                    <h2 class="text-base font-bold text-slate-700 flex items-center">
+                        <span class="inline-block w-2.5 h-2.5 bg-blue-600 rounded-full mr-2"></span>
+                        Detail
+                    </h2>
+                    <div class="flex items-center space-x-2 text-xs">
+                        <span class="text-slate-500 font-medium" id="filtered-count-label">แสดงทั้งหมด 10 รายการ</span>
+                        <button onclick="resetFilters()" class="text-blue-600 hover:text-blue-800 font-bold underline text-xs">ล้างตัวกรอง</button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 text-[11px]">
+                                <th class="p-3">สาขา</th>
+                                <th class="p-3">หมายเลขห้อง</th>
+                                <th class="p-3">Day of วันที่ตรวจ</th>
+                                <th class="p-3">Task (group)</th>
+                                <th class="p-3">Task</th>
+                                <th class="p-3">ชื่อผู้ตรวจ*</th>
+                                <th class="p-3">Reason (group)</th>
+                                <th class="p-3 text-center">สถานะ</th>
+                                <th class="p-3 text-center">ผู้อนุมัติ/ผู้ยืนยัน</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-table-body" class="divide-y divide-slate-100 text-slate-700">
+                            <!-- Rows injected dynamically via Javascript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Right Pane: Filtering Sidebar (Matched to image_ae8a40.jpg exactly) -->
+        <aside class="w-full lg:w-72 bg-white border-t lg:border-t-0 lg:border-l border-slate-200 p-4 space-y-4 flex flex-col justify-between shrink-0">
+            <div class="space-y-4">
+                
+                <!-- Date Update Header Widget -->
+                <div class="bg-slate-50 rounded-lg p-3 border border-slate-200 text-center flex flex-col items-center justify-center">
+                    <i class="fa-regular fa-calendar-check text-2xl text-slate-400 mb-1"></i>
+                    <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Date Update</span>
+                    <span class="text-sm font-semibold text-slate-700 mt-1" id="current-date">6/6/2026</span>
+                </div>
+
+                <!-- Filters Header Section -->
+                <div class="border-b border-slate-100 pb-2">
+                    <h3 class="text-xs font-bold uppercase text-slate-400 tracking-wider flex items-center">
+                        <i class="fa-solid fa-filter text-[10px] mr-1.5 text-blue-500"></i> ตัวกรองรายงาน (Filters)
+                    </h3>
+                </div>
+
+                <!-- Dropdown Selectors exactly as visible in image_ae8a40.jpg -->
+                <div class="space-y-2.5">
+                    
+                    <!-- 1. Month of วันที่ตรวจ -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Month of วันที่ตรวจ</label>
+                        <select id="filter-month" class="w-full text-xs border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onchange="applyFilters()">
+                            <option value="All">(All)</option>
+                            <option value="April 2026">April 2026</option>
+                            <option value="May 2026">May 2026</option>
+                            <option value="June 2026">June 2026</option>
+                        </select>
+                    </div>
+
+                    <!-- 2. วันที่ตรวจ -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">วันที่ตรวจ</label>
+                        <select id="filter-date" class="w-full text-xs border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onchange="applyFilters()">
+                            <option value="All">(All)</option>
+                            <option value="April 18, 2026">April 18, 2026</option>
+                            <option value="May 10, 2026">May 10, 2026</option>
+                            <option value="June 6, 2026">June 6, 2026</option>
+                        </select>
+                    </div>
+
+                    <!-- 3. สาขา -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">สาขา</label>
+                        <select id="filter-branch" class="w-full text-xs border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onchange="applyFilters()">
+                            <option value="All">(All)</option>
+                            <option value="เกษตร-นวมินทร์">เกษตร-นวมินทร์</option>
+                            <option value="บางนา">บางนา</option>
+                            <option value="พุทธมณฑล">พุทธมณฑล</option>
+                            <option value="รัชดา">รัชดา</option>
+                            <option value="ราชพฤกษ์">ราชพฤกษ์</option>
+                        </select>
+                    </div>
+
+                    <!-- 4. อาคาร -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">อาคาร</label>
+                        <select id="filter-building" class="w-full text-xs border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onchange="applyFilters()">
+                            <option value="All">(All)</option>
+                            <option value="A1">อาคาร A1</option>
+                            <option value="B2">อาคาร B2</option>
+                            <option value="C3">อาคาร C3</option>
+                        </select>
+                    </div>
+
+                    <!-- 5. หมายเลขห้อง -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">หมายเลขห้อง</label>
+                        <select id="filter-room" class="w-full text-xs border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onchange="applyFilters()">
+                            <option value="All">(All)</option>
+                            <option value="A101">A101</option>
+                            <option value="B104">B104</option>
+                            <option value="C210">C210</option>
+                        </select>
+                    </div>
+
+                    <!-- 6. Task (group) -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Task (group)</label>
+                        <select id="filter-taskgroup" class="w-full text-xs border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onchange="applyFilters()">
+                            <option value="All">(All)</option>
+                            <option value="1.ตรวจเช็ค-บำรุงรักษา">1.ตรวจเช็ค-บำรุงรักษา</option>
+                            <option value="2.ตรวจสอบระบบไฟ">2.ตรวจสอบระบบไฟ</option>
+                        </select>
+                    </div>
+
+                    <!-- 7. Task (Detail) -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Task</label>
+                        <select id="filter-task" class="w-full text-xs border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onchange="applyFilters()">
+                            <option value="All">(All)</option>
+                            <option value="1.1 ตรวจเปิด-บำรุงรักษา">1.1 ตรวจเปิด-บำรุงรักษา</option>
+                            <option value="1.1.1 ตรวจเช็คมิเตอร์ไฟฟ้า">1.1.1 ตรวจเช็คมิเตอร์ไฟฟ้า</option>
+                            <option value="1.1.2 ตรวจเช็คหลอดไฟและสายไฟฟ้า(ภายใน)">1.1.2 ตรวจเช็คหลอดไฟและสายไฟฟ้า(ภายใน)</option>
+                            <option value="1.1.3 ตรวจเช็คหลอดไฟและสายไฟฟ้า(ภายนอก)">1.1.3 ตรวจเช็คหลอดไฟและสายไฟฟ้า(ภายนอก)</option>
+                            <option value="1.1.4 สแกนความร้อน">1.1.4 สแกนความร้อน</option>
+                            <option value="1.1.5 PM ตู้ LP">1.1.5 PM ตู้ LP</option>
+                            <option value="2.1 เช็คไฟฉุกเฉิน">2.1 เช็คไฟฉุกเฉิน</option>
+                            <option value="2.2 ตรวจเช็คเบรกเกอร์หลัก">2.2 ตรวจเช็คเบรกเกอร์หลัก</option>
+                        </select>
+                    </div>
+
+                    <!-- 8. Status (gr.) -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Status (gr.)</label>
+                        <select id="filter-status" class="w-full text-xs border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onchange="applyFilters()">
+                            <option value="All">(All)</option>
+                            <option value="ตรวจเช็คผ่าน">ตรวจเช็คผ่าน</option>
+                            <option value="ตรวจเปิดไม่ผ่าน">ตรวจเปิดไม่ผ่าน</option>
+                        </select>
+                    </div>
+
+                    <!-- 9. ชื่อผู้ตรวจ* -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">ชื่อผู้ตรวจ*</label>
+                        <select id="filter-inspector" class="w-full text-xs border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onchange="applyFilters()">
+                            <option value="All">(All)</option>
+                            <option value="คำคูณ อนุกูล">คำคูณ อนุกูล</option>
+                            <option value="สมศักดิ์ รักดี">สมศักดิ์ รักดี</option>
+                        </select>
+                    </div>
+
+                    <!-- 10. ผู้อนุมัติในการตรวจ -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">ผู้อนุมัติในการตรวจ</label>
+                        <select id="filter-approver" class="w-full text-xs border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onchange="applyFilters()">
+                            <option value="All">(All)</option>
+                            <option value="สุวรรณ ก่อนนาค">สุวรรณ ก่อนนาค</option>
+                        </select>
+                    </div>
+
+                    <!-- 11. ตำแหน่งผู้อนุมัติในการตรวจ -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">ตำแหน่งผู้อนุมัติในการตรวจ</label>
+                        <select id="filter-role" class="w-full text-xs border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" onchange="applyFilters()">
+                            <option value="All">(All)</option>
+                            <option value="ซุปเปอร์ไวเซอร์">ซุปเปอร์ไวเซอร์</option>
+                        </select>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Sidebar Legend panel -->
+            <div class="border-t border-slate-200 pt-3 mt-4 text-[11px] space-y-2">
+                <div class="font-bold text-slate-400 uppercase tracking-wider text-[9px]">Status (gr.)</div>
+                <div class="flex items-center space-x-2">
+                    <span class="inline-block w-4 h-2.5 bg-emerald-500 rounded-sm"></span>
+                    <span class="text-slate-600 font-medium">ตรวจเช็คผ่าน</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="inline-block w-4 h-2.5 bg-rose-500 rounded-sm"></span>
+                    <span class="text-slate-600 font-medium">ตรวจเช็คไม่ผ่าน</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Custom JS Store & Interactive Charts Logic -->
+    <script>
+        // Comprehensive Dataset reflecting image_ae8a40.jpg elements and structured metadata
+        const inspectionDataset = [
+            {
+                branch: "เกษตร-นวมินทร์",
+                room: "A101",
+                building: "A1",
+                date: "April 18, 2026",
+                month: "April 2026",
+                taskGroup: "1.ตรวจเช็ค-บำรุงรักษา",
+                taskDetail: "1.1 ตรวจเปิด-บำรุงรักษา",
+                inspector: "คำคูณ อนุกูล",
+                reasonGroup: "ปกติ",
+                status: "ตรวจเช็คผ่าน",
+                approverName: "สุวรรณ ก่อนนาค",
+                approverRole: "ซุปเปอร์ไวเซอร์"
+            },
+            {
+                branch: "เกษตร-นวมินทร์",
+                room: "A101",
+                building: "A1",
+                date: "April 18, 2026",
+                month: "April 2026",
+                taskGroup: "1.ตรวจเช็ค-บำรุงรักษา",
+                taskDetail: "1.1.1 ตรวจเช็คมิเตอร์ไฟฟ้า",
+                inspector: "คำคูณ อนุกูล",
+                reasonGroup: "ปกติ",
+                status: "ตรวจเช็คผ่าน",
+                approverName: "สุวรรณ ก่อนนาค",
+                approverRole: "ซุปเปอร์ไวเซอร์"
+            },
+            {
+                branch: "เกษตร-นวมินทร์",
+                room: "A101",
+                building: "A1",
+                date: "April 18, 2026",
+                month: "April 2026",
+                taskGroup: "1.ตรวจเช็ค-บำรุงรักษา",
+                taskDetail: "1.1.2 ตรวจเช็คหลอดไฟและสายไฟฟ้า(ภายใน)",
+                inspector: "คำคูณ อนุกูล",
+                reasonGroup: "ปกติ",
+                status: "ตรวจเช็คผ่าน",
+                approverName: "สุวรรณ ก่อนนาค",
+                approverRole: "ซุปเปอร์ไวเซอร์"
+            },
+            {
+                branch: "เกษตร-นวมินทร์",
+                room: "A101",
+                building: "A1",
+                date: "April 18, 2026",
+                month: "April 2026",
+                taskGroup: "1.ตรวจเช็ค-บำรุงรักษา",
+                taskDetail: "1.1.3 ตรวจเช็คหลอดไฟและสายไฟฟ้า(ภายนอก)",
+                inspector: "คำคูณ อนุกูล",
+                reasonGroup: "ปกติ",
+                status: "ตรวจเช็คผ่าน",
+                approverName: "สุวรรณ ก่อนนาค",
+                approverRole: "ซุปเปอร์ไวเซอร์"
+            },
+            {
+                branch: "เกษตร-นวมินทร์",
+                room: "A101",
+                building: "A1",
+                date: "April 18, 2026",
+                month: "April 2026",
+                taskGroup: "1.ตรวจเช็ค-บำรุงรักษา",
+                taskDetail: "1.1.4 สแกนความร้อน",
+                inspector: "คำคูณ อนุกูล",
+                reasonGroup: "ปกติคลับคล้ายจะมีความร้อนนิดหน่อย...",
+                status: "ตรวจเช็คผ่าน",
+                approverName: "สุวรรณ ก่อนนาค",
+                approverRole: "ซุปเปอร์ไวเซอร์"
+            },
+            {
+                branch: "เกษตร-นวมินทร์",
+                room: "A101",
+                building: "A1",
+                date: "April 18, 2026",
+                month: "April 2026",
+                taskGroup: "1.ตรวจเช็ค-บำรุงรักษา",
+                taskDetail: "1.1.5 PM ตู้ LP",
+                inspector: "คำคูณ อนุกูล",
+                reasonGroup: "ปกติ",
+                status: "ตรวจเช็คผ่าน",
+                approverName: "สุวรรณ ก่อนนาค",
+                approverRole: "ซุปเปอร์ไวเซอร์"
+            },
+            {
+                branch: "บางนา",
+                room: "B104",
+                building: "B2",
+                date: "May 10, 2026",
+                month: "May 2026",
+                taskGroup: "1.ตรวจเช็ค-บำรุงรักษา",
+                taskDetail: "1.1.1 ตรวจเช็คมิเตอร์ไฟฟ้า",
+                inspector: "สมศักดิ์ รักดี",
+                reasonGroup: "ปกติ",
+                status: "ตรวจเช็คผ่าน",
+                approverName: "สุวรรณ ก่อนนาค",
+                approverRole: "ซุปเปอร์ไวเซอร์"
+            },
+            {
+                branch: "บางนา",
+                room: "B104",
+                building: "B2",
+                date: "May 10, 2026",
+                month: "May 2026",
+                taskGroup: "1.ตรวจเช็ค-บำรุงรักษา",
+                taskDetail: "1.1.2 ตรวจระบบน้ำหล่อเย็น",
+                inspector: "สมศักดิ์ รักดี",
+                reasonGroup: "พบคราบตะกรัน",
+                status: "ตรวจเปิดไม่ผ่าน",
+                approverName: "สุวรรณ ก่อนนาค",
+                approverRole: "ซุปเปอร์ไวเซอร์"
+            },
+            {
+                branch: "พุทธมณฑล",
+                room: "C210",
+                building: "C3",
+                date: "June 6, 2026",
+                month: "June 2026",
+                taskGroup: "2.ตรวจสอบระบบไฟ",
+                taskDetail: "2.1 เช็คไฟฉุกเฉิน",
+                inspector: "คำคูณ อนุกูล",
+                reasonGroup: "ปกติ",
+                status: "ตรวจเช็คผ่าน",
+                approverName: "สุวรรณ ก่อนนาค",
+                approverRole: "ซุปเปอร์ไวเซอร์"
+            },
+            {
+                branch: "รัชดา",
+                room: "A101",
+                building: "A1",
+                date: "June 6, 2026",
+                month: "June 2026",
+                taskGroup: "2.ตรวจสอบระบบไฟ",
+                taskDetail: "2.2 ตรวจเช็คเบรกเกอร์หลัก",
+                inspector: "คำคูณ อนุกูล",
+                reasonGroup: "ชำรุดรอซ่อมบำรุง",
+                status: "ตรวจเปิดไม่ผ่าน",
+                approverName: "สุวรรณ ก่อนนาค",
+                approverRole: "ซุปเปอร์ไวเซอร์"
+            }
+        ];
+
+        // Global Chart instances to modify dynamically
+        let chartBranchRoomsInstance;
+        let chartPieStatusInstance;
+        let chartBranchPercentInstance;
+
+        window.onload = function() {
+            // Lock UI to context date
+            document.getElementById('current-date').innerText = "6/6/2026"; 
+
+            renderDetailsTable(inspectionDataset);
+            initializeCharts();
+        }
+
+        function initializeCharts() {
+            // 1. Horizontal Bar: จำนวนอาคาร / จำนวนห้อง by สาขา
+            const ctx1 = document.getElementById('chartBranchRooms').getContext('2d');
+            chartBranchRoomsInstance = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['พุทธมณฑล', 'รัชดา', 'บางนา', 'เกษตร-นวมินทร์', 'ราชพฤกษ์'],
+                    datasets: [
+                        {
+                            label: 'จำนวนอาคาร',
+                            data: [4, 2, 5, 2, 1],
+                            backgroundColor: '#4a90e2',
+                            borderRadius: 4,
+                            barPercentage: 0.6
+                        },
+                        {
+                            label: 'จำนวนห้อง',
+                            data: [42, 28, 17, 22, 4],
+                            backgroundColor: '#b3d4fc',
+                            borderRadius: 4,
+                            barPercentage: 0.6
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+                        y: { grid: { display: false }, ticks: { font: { size: 9, family: 'Sarabun' } } }
+                    }
+                }
+            });
+
+            // 2. Pie Chart: % Status
+            const ctx2 = document.getElementById('chartPieStatus').getContext('2d');
+            chartPieStatusInstance = new Chart(ctx2, {
+                type: 'pie',
+                data: {
+                    labels: ['ตรวจเปิดผ่าน', 'ตรวจเปิดไม่ผ่าน', 'Other'],
+                    datasets: [{
+                        data: [3485, 79, 69],
+                        backgroundColor: ['#2ecc71', '#e74c3c', '#cbd5e1'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 10, font: { size: 9, family: 'Sarabun' } }
+                        }
+                    }
+                }
+            });
+
+            // 3. Stacked Horizontal % Status by สาขา
+            const ctx3 = document.getElementById('chartBranchPercent').getContext('2d');
+            chartBranchPercentInstance = new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: ['พุทธมณฑล', 'รัชดา', 'บางนา', 'เกษตร-นวมินทร์'],
+                    datasets: [
+                        {
+                            label: 'ตรวจผ่าน %',
+                            data: [99.58, 97.47, 92.46, 92.10],
+                            backgroundColor: '#2ecc71',
+                            borderRadius: 3,
+                            barThickness: 12
+                        },
+                        {
+                            label: 'ไม่ผ่าน %',
+                            data: [0.42, 2.53, 7.54, 7.90],
+                            backgroundColor: '#e74c3c',
+                            borderRadius: 3,
+                            barThickness: 12
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, max: 100, display: false },
+                        y: { stacked: true, grid: { display: false }, ticks: { font: { size: 9, family: 'Sarabun' } } }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function applyFilters() {
+            const monthVal = document.getElementById('filter-month').value;
+            const dateVal = document.getElementById('filter-date').value;
+            const branchVal = document.getElementById('filter-branch').value;
+            const buildingVal = document.getElementById('filter-building').value;
+            const roomVal = document.getElementById('filter-room').value;
+            const taskGroupVal = document.getElementById('filter-taskgroup').value;
+            const taskVal = document.getElementById('filter-task').value;
+            const statusVal = document.getElementById('filter-status').value;
+            const inspectorVal = document.getElementById('filter-inspector').value;
+            const approverVal = document.getElementById('filter-approver').value;
+            const roleVal = document.getElementById('filter-role').value;
+
+            // Filter Dataset dynamically
+            const filteredData = inspectionDataset.filter(row => {
+                return (monthVal === 'All' || row.month === monthVal) &&
+                       (dateVal === 'All' || row.date === dateVal) &&
+                       (branchVal === 'All' || row.branch === branchVal) &&
+                       (buildingVal === 'All' || row.building === buildingVal) &&
+                       (roomVal === 'All' || row.room === roomVal) &&
+                       (taskGroupVal === 'All' || row.taskGroup === taskGroupVal) &&
+                       (taskVal === 'All' || row.taskDetail === taskVal) &&
+                       (statusVal === 'All' || row.status === statusVal) &&
+                       (inspectorVal === 'All' || row.inspector === inspectorVal) &&
+                       (approverVal === 'All' || row.approverName === approverVal) &&
+                       (roleVal === 'All' || row.approverRole === roleVal);
+            });
+
+            renderDetailsTable(filteredData);
+            updateDashboardMetrics(filteredData);
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-month').value = 'All';
+            document.getElementById('filter-date').value = 'All';
+            document.getElementById('filter-branch').value = 'All';
+            document.getElementById('filter-building').value = 'All';
+            document.getElementById('filter-room').value = 'All';
+            document.getElementById('filter-taskgroup').value = 'All';
+            document.getElementById('filter-task').value = 'All';
+            document.getElementById('filter-status').value = 'All';
+            document.getElementById('filter-inspector').value = 'All';
+            document.getElementById('filter-approver').value = 'All';
+            document.getElementById('filter-role').value = 'All';
+            
+            renderDetailsTable(inspectionDataset);
+            updateDashboardMetrics(inspectionDataset);
+        }
+
+        function updateDashboardMetrics(filteredData) {
+            let totalPassed = 0;
+            let totalFailed = 0;
+            let totalOther = 0;
+
+            filteredData.forEach(row => {
+                if(row.status === 'ตรวจเช็คผ่าน') totalPassed += 348; // mock scaled multiplier
+                else if(row.status === 'ตรวจเปิดไม่ผ่าน') totalFailed += 79;
+                else totalOther += 6;
+            });
+
+            document.getElementById('metric-passed').innerText = totalPassed === 0 ? "3,485" : totalPassed.toLocaleString();
+            document.getElementById('metric-failed').innerText = totalFailed === 0 ? "79" : totalFailed.toLocaleString();
+            
+            if(chartPieStatusInstance) {
+                chartPieStatusInstance.data.datasets[0].data = [
+                    totalPassed === 0 ? 3485 : totalPassed, 
+                    totalFailed === 0 ? 79 : totalFailed, 
+                    totalOther === 0 ? 69 : totalOther
+                ];
+                chartPieStatusInstance.update();
+            }
+        }
+
+        function renderDetailsTable(data) {
+            const tableBody = document.getElementById('detail-table-body');
+            document.getElementById('filtered-count-label').innerText = `พบ ${data.length} รายการ`;
+            
+            tableBody.innerHTML = '';
+
+            if (data.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-400 font-medium">ไม่พบข้อมูลตามตัวเลือกตัวกรอง</td></tr>`;
+                return;
+            }
+
+            data.forEach(row => {
+                const statusBadge = row.status === 'ตรวจเช็คผ่าน' 
+                    ? `<div class="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-sm min-w-[120px] text-center mx-auto">
+                        ตรวจเช็คผ่าน
+                       </div>`
+                    : `<div class="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-300 shadow-sm min-w-[120px] text-center mx-auto">
+                        ตรวจเปิดไม่ผ่าน
+                       </div>`;
+
+                const approverBadge = `<div class="bg-slate-50 border border-slate-200/60 text-slate-600 px-3 py-1.5 rounded-full text-center text-[10px] font-semibold shadow-sm inline-flex flex-col justify-center min-w-[150px]">
+                    <span class="text-slate-700 leading-tight">${row.approverName}</span>
+                    <span class="text-[9px] text-slate-400 font-normal leading-none mt-0.5">${row.approverRole}</span>
+                </div>`;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition-all border-b border-slate-100";
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-600 text-xs">${row.branch}</td>
+                    <td class="p-3"><span class="bg-slate-100 px-1.5 py-0.5 rounded text-blue-600 font-mono font-bold">${row.room}</span></td>
+                    <td class="p-3 text-slate-500 text-xs">${row.date}</td>
+                    <td class="p-3 text-slate-600 font-semibold text-xs">${row.taskGroup}</td>
+                    <td class="p-3 text-xs text-slate-600 font-medium max-w-xs truncate" title="${row.taskDetail}">${row.taskDetail}</td>
+                    <td class="p-3 text-slate-600 font-medium text-xs">${row.inspector}</td>
+                    <td class="p-3 text-slate-500 italic text-xs">${row.reasonGroup}</td>
+                    <td class="p-3 text-center">${statusBadge}</td>
+                    <td class="p-3 text-center">${approverBadge}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>
