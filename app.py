@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components  # ย้ายมาไว้ด้านบนสุดป้องกัน TypeError
 import pandas as pd
 import json
 
@@ -20,7 +21,6 @@ st.markdown("""
 # =================================================================
 @st.cache_data
 def load_data():
-    # บังคับอ่านเป็นตัวหนังสือเพื่อป้องกัน Format เพี้ยน
     df = pd.read_excel("Data exemple.xlsx", sheet_name="Sheet1", dtype=str)
     df = df.fillna('')
     if 'Reason' in df.columns:
@@ -51,7 +51,7 @@ with col_f3:
 
 
 # =================================================================
-# 4. ประมวลผล Filter บนข้อมูล Excel จริง (เช่น เลือกรัชดา เหลือแค่รัชดา)
+# 4. ประมวลผล Filter บนข้อมูล Excel จริง
 # =================================================================
 df_filtered = df_raw.copy()
 
@@ -99,12 +99,10 @@ if old_dataset_marker in html_content:
 
 
 # =================================================================
-# 6. แสดงผลแดชบอร์ด HTML (บังคับโหลดใหม่ชัวร์ๆ ด้วย component_key)
+# 6. แสดงผลแดชบอร์ด HTML (ปรับวิธีเรียกคอมโพเนนต์ใหม่)
 # =================================================================
-import streamlit.components.v1 as components
-
 # บังคับสร้างรหัสตามการเลือกฟิลเตอร์เพื่อสั่งให้หน้าจอ HTML รีเฟรชตัวเองตามข้อมูลล่าสุด
 component_key = f"dash_{selected_branch}_{selected_building}_{selected_status}"
 
-# แสดงผลหน้าจอแดชบอร์ดสุดสวยตาม HTML ตัวอย่าง
-components.html(html_content, height=1200, scrolling=True, key=component_key)
+# เรียกผ่าน st.components.v1.html โดยตรงเพื่อตัดปัญหา TypeError
+st.components.v1.html(html_content, height=1200, scrolling=True, key=component_key)
