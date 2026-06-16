@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 import os
+import hashlib  # เพิ่มเข้ามาเพื่อช่วยแปลงคีย์ภาษาไทยให้กลายเป็นรหัสอังกฤษ/ตัวเลข
 
 # =================================================================
 # 1. ตั้งค่าหน้าเพจให้เต็มจอ และซ่อนส่วนเกินของ Streamlit
@@ -15,7 +16,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ค้นหาตำแหน่งโฟลเดอร์ปัจจุบันของโปรเจกต์ ป้องกันปัญหา Path บน Cloud
+# ค้นหาตำแหน่งโฟลเดอร์ปัจจุบันของโปรเจกต์
 current_dir = os.path.dirname(os.path.abspath(__file__))
 excel_path = os.path.join(current_dir, "Data exemple.xlsx")
 html_path = os.path.join(current_dir, "dashboard_tenant_store_inspection (1).html")
@@ -41,16 +42,15 @@ df_raw = load_data(excel_path)
 
 
 # =================================================================
-# 3. ตรวจสอบว่าเปิดไฟล์สำเร็จหรือไม่ หากไม่สำเร็จให้แจ้งเตือนทันที
+# 3. ตรวจสอบไฟล์บน Server
 # =================================================================
 if df_raw is None or df_raw.empty:
     st.error("❌ ระบบไม่สามารถอ่านข้อมูลจากไฟล์ Excel 'Data exemple.xlsx' ได้")
-    st.info("💡 กรุณาตรวจสอบว่าได้อัปเดตไฟล์ Excel ขึ้นไปบน GitHub Repository ในโฟลเดอร์เดียวกับไฟล์ app.py แล้วหรือยัง")
-    st.stop()  # สั่งหยุดการรันเพื่อไม่ให้เกิด Error บรรทัดถัดไป
+    st.info("💡 กรุณาตรวจสอบว่าชื่อไฟล์สะกดตัวพิมพ์เล็ก-พิมพ์ใหญ่ตรงกับบน GitHub เป๊ะๆ หรือไม่ (เช่น ตัว x ใน exemple)")
+    st.stop()
 
 if not os.path.exists(html_path):
     st.error("❌ ไม่พบไฟล์โครงแดชบอร์ดหน้ากาก HTML บนเซิร์ฟเวอร์")
-    st.info(f"💡 กรุณาตรวจสอบว่ามีไฟล์ชื่อ 'dashboard_tenant_store_inspection (1).html' อยู่บน GitHub แล้วหรือยัง")
     st.stop()
 
 
@@ -133,9 +133,13 @@ html_content += render_trigger
 
 
 # =================================================================
-# 7. แสดงผลแดชบอร์ด HTML (ใช้คำสั่งตรงของระบบเพื่อเลี่ยง TypeError ชัวร์ๆ)
+# 7. แสดงผลแดชบอร์ด HTML (แก้บั๊ก TypeError โดยการเซ็ตคีย์เป็นภาษาอังกฤษล้วน)
 # =================================================================
-component_key = f"dash_{selected_branch}_{selected_building}_{selected_status}"
+# รวมข้อความฟิลเตอร์ไทยเข้าด้วยกันก่อน
+raw_key_string = f"{selected_branch}_{selected_building}_{selected_status}"
 
-# เรียกใช้ผ่านคำสั่งเต็มขั้นเด็ดขาด การันตีไม่มีการชนกันของ Arguments
-st.components.v1.html(html_content, height=1200, scrolling=True, key=component_key)
+# แปลงข้อความไทยให้กลายเป็นรหัสอังกฤษ/ตัวเลขสั้นๆ (MD5 Hash) ป้องกัน Streamlit เอ๋อ
+safe_english_key = hashlib.md5(raw_key_string.encode('utf-8')).hexdigest()
+
+# ใส่คีย์ภาษาอังกฤษที่ปลอดภัยลงในคอมโพเนนต์
+st.components.v1.html(html_content, height=1200, scrolling=True, key=f"dash_{safe_english_key}")
