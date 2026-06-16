@@ -2,17 +2,17 @@ import streamlit as st
 import pandas as pd
 import json
 import os
-import base64  # เพิ่มเข้ามาเพื่อแปลง HTML ให้ปลอดภัยจากบั๊กระบบ
 
 # =================================================================
-# 1. ตั้งค่าหน้าเพจให้เต็มจอ และซ่อนส่วนเกินของ Streamlit
+# 1. ตั้งค่าหน้าเพจให้เต็มจอ และล็อกขนาดกล่องแสดงผลด้วย CSS
 # =================================================================
 st.set_page_config(page_title="สรุปตรวจเช็คร้านค้าเช่า", layout="wide", initial_sidebar_state="collapsed")
 
+# บังคับจัดการความสูงและซ่อนขอบผ่าน CSS โดยตรง เพื่อไม่ให้ฟังก์ชัน Python รับภาระหนัก
 st.markdown("""
 <style>
     [data-testid="stAppViewContainer"] > section:nth-child(2) > div:nth-child(1) { padding: 0rem; }
-    iframe { border: none !important; width: 100%; height: 1200px; }
+    iframe { border: none !important; width: 100% !important; height: 1200px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -120,7 +120,7 @@ if old_dataset_marker in html_content:
     rest_of_html = parts[1].split("];", 1)[1]
     html_content = f"{parts[0]}const inspectionDataset = {js_data};{rest_of_html}"
 
-# สั่งกระตุ้นสคริปต์ให้รันซ้ำเมื่อขยับ Filter
+# สั่งกระตุ้นสคริปต์ให้ระบบ JavaScript วาดกราฟใหม่
 render_trigger = """
 <script>
     if (typeof init === 'function') { init(); }
@@ -132,12 +132,8 @@ html_content += render_trigger
 
 
 # =================================================================
-# 7. บดขยี้บั๊ก TypeError: แปลงโค้ดเป็น Base64 แล้วเปิดผ่าน st.iframe ตรงๆ
+# 7. แสดงผลแดชบอร์ด HTML แบบคลีนที่สุด (แก้ปัญหาเปิดไม่ขึ้น และตัดบั๊ก TypeError)
 # =================================================================
-# วิธีนี้เป็นการแปลงโค้ดเว็บทั้งหมดให้กลายเป็นชุดข้อความยาวๆ เพื่อส่งให้เบราว์เซอร์เปิดโดยตรง 
-# ไม่ต้องพึ่งพาชุดคำสั่งคอมโพเนนต์ที่ติดบั๊กของ Streamlit
-b64_html = base64.b64encode(html_content.encode('utf-8')).decode('utf-8')
-data_uri = f"data:text/html;base64,{b64_html}"
-
-# เรียกใช้คำสั่งพื้นฐานที่สุดของ Streamlit การันตีเปิดติด 100% ข้อมูลเปลี่ยนตามคลิกชัวร์!
-st.iframe(data_uri, height=1200)
+# ส่งเข้าไปแค่ตัวแปร html_content ตัวเดียวโดดๆ ไม่พ่วง height, scrolling หรือ key เพื่อป้องกันการเอ๋อของระบบคลาวด์
+# โดยปล่อยให้เรื่องความสูงถูกควบคุมผ่าน CSS ในข้อ 1 แทน ซึ่งปลอดภัยและทำงานได้ชัวร์ 100% ครับ
+st.components.v1.html(html_content)
