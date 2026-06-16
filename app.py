@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
-import json
 
 # =================================================================
 # 1. ตั้งค่าหน้าเพจให้เต็มจอ และจัดสไตล์ CSS (ถอดแบบสีสันจาก HTML ตัวอย่าง)
@@ -39,7 +38,6 @@ st.markdown("""
         font-size: 14px;
         background-color: #ffffff;
     }
-    /* สีหัวตาราง (ปรับเป็นสีโทนเดียวกับแดชบอร์ด HTML ของพี่ได้เลย) */
     .custom-dashboard-table th {
         background-color: #f8f9fa;
         color: #333333;
@@ -54,14 +52,12 @@ st.markdown("""
         color: #495057;
         vertical-align: middle;
     }
-    /* ไฮไลท์สีสลับแถว */
     .custom-dashboard-table tr:nth-child(even) {
         background-color: #fdfdfd;
     }
     .custom-dashboard-table tr:hover {
         background-color: #f1f3f5;
     }
-    /* ตกแต่งปุ่มหรือ Badge สถานะ */
     .status-badge {
         padding: 4px 10px;
         border-radius: 20px;
@@ -138,10 +134,4 @@ with col7:
 
 
 # =================================================================
-# 4. กลไกการ Filter ข้อมูลตาม Data จริง
-# =================================================================
-df_filtered = df_raw.copy()
-
-if selected_branch != 'ทั้งหมด': df_filtered = df_filtered[df_filtered['สาขา'] == selected_branch]
-if selected_building != 'ทั้งหมด': df_filtered = df_filtered[df_filtered['อาคาร'] == selected_building]
-if date_col and selected_date != '
+# 4. กลไกการ Filter ข้อมูลตาม Data จริง (แก้ไข Syntax เรีย
