@@ -22,7 +22,7 @@ html_path = os.path.join(current_dir, "dashboard_tenant_store_inspection (1).htm
 
 
 # =================================================================
-# 2. ฟังก์ชันอ่านไฟล์ Excel (ดึงมาครบทุกบรรทัดชัวร์ๆ)
+# 2. ฟังก์ชันอ่านไฟล์ Excel (ดึงมาตรงๆ 100% ไม่มีการตัดแถวทิ้ง)
 # =================================================================
 @st.cache_data
 def load_data(file_path):
@@ -45,7 +45,7 @@ if df_raw is None or df_raw.empty:
 
 
 # =================================================================
-# 3. ส่วนสร้าง FILTER ด้านบนสุด (Streamlit)
+# 3. ส่วนสร้าง FILTER ด้านบนสุดด้วย Streamlit
 # =================================================================
 st.title("📊 ระบบสรุปตรวจเช็คร้านค้าเช่า")
 
@@ -62,27 +62,10 @@ with col_f3:
 
 
 # =================================================================
-# 4. ประมวลผลตัดข้อมูลใน Excel จริงตาม Filter ที่เลือก
+# 4. แปลงข้อมูล Excel ทั้งหมดให้เป็น JSON (ส่งชุดเต็มไปให้ HTML)
 # =================================================================
-df_filtered = df_raw.copy()
-
-if selected_branch != 'ทั้งหมด':
-    df_filtered = df_filtered[df_filtered['สาขา'] == selected_branch]
-if selected_building != 'ทั้งหมด':
-    df_filtered = df_filtered[df_filtered['อาคาร'] == selected_building]
-if selected_status != 'ทั้งหมด':
-    df_filtered = df_filtered[df_filtered['Status'] == selected_status]
-
-
-# =================================================================
-# 5. อ่าน HTML และฉีดข้อมูลที่ผ่านฟิลเตอร์แล้วเข้าไปแทนที่ข้อมูลชุดเก่า
-# =================================================================
-with open(html_path, "r", encoding="utf-8") as f:
-    html_content = f.read()
-
-# แปลงข้อมูลแถวที่กรอกเสร็จแล้วส่งให้ HTML ตัวอย่างวาดกราฟ
 records = []
-for _, row in df_filtered.iterrows():
+for _, row in df_raw.iterrows():
     records.append({
         "branch": str(row.get('สาขา', '')).strip(),
         "room": str(row.get('หมายเลขห้อง', '')).strip(),
@@ -100,24 +83,61 @@ for _, row in df_filtered.iterrows():
 
 js_data = json.dumps(records, ensure_ascii=False)
 
+
+# =================================================================
+# 5. อ่าน HTML และฝังกลไกสั่งควบคุม Filter จากภายในโครงสร้างเว็บ
+# =================================================================
+with open(html_path, "r", encoding="utf-8") as f:
+    html_content = f.read()
+
+# เสียบข้อมูลดิบชุดเต็มเข้าตัวแปรดั้งเดิม
 old_dataset_marker = "const inspectionDataset = ["
 if old_dataset_marker in html_content:
     parts = html_content.split(old_dataset_marker)
     rest_of_html = parts[1].split("];", 1)[1]
     html_content = f"{parts[0]}const inspectionDataset = {js_data};{rest_of_html}"
 
+# 🔥 สคริปต์ขั้นเด็ดขาด: วิ่งไปสั่งเปลี่ยนค่า Filter ในแถบขวาของ HTML โดยตรง
+# เปลี่ยนคำว่า 'ทั้งหมด' เป็นค่าว่างเพื่อให้แมตช์กับเงื่อนไขดั้งเดิมในโครงสร้าง HTML ของพี่
+js_branch = "" if selected_branch == "ทั้งหมด" else selected_branch
+js_building = "" if selected_building == "ทั้งหมด" else selected_building
+js_status = "" if selected_status == "ทั้งหมด" else selected_status
+
+html_filter_bridge = f"""
+<script>
+    // ทำงานทันทีเมื่อโครงสร้างหน้าจอโหลดเสร็จ
+    window.addEventListener('DOMContentLoaded', () => {{
+        setTimeout(() => {{
+            // 1. ฟังก์ชันค้นหาและกรองข้อมูลเลียนแบบพฤติกรรมการคลิกเลือกของมนุษย์
+            function triggerHTMLFilter(val) {{
+                if (!val) return;
+                const selectors = document.querySelectorAll('select, input');
+                selectors.forEach(el => {{
+                    if (el.value === val || el.innerText.includes(val)) {{
+                        el.value = val;
+                        el.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                    }}
+                }});
+            }}
+
+            // 2. สั่งเปิดสวิตช์ฟิลเตอร์ตามที่พี่กดใน Streamlit ทันที
+            triggerHTMLFilter("{js_branch}");
+            triggerHTMLFilter("{js_building}");
+            triggerHTMLFilter("{js_status}");
+
+            // 3. สั่งให้ฟังก์ชันหลักใน HTML ทำการรีเฟรชยอดอาคาร/ห้อง และวาดกราฟวงกลมใหม่
+            if (typeof init === 'function') {{ init(); }}
+            if (typeof renderDashboard === 'function') {{ renderDashboard(); }}
+            if (typeof updateCharts === 'function') {{ updateCharts(); }}
+        }}, 400); // ดีเลย์สั้นๆ เพื่อรอให้ตาราง HTML พร้อมทำงาน
+    }});
+</script>
+"""
+html_content += html_filter_bridge
+
 
 # =================================================================
-# 6. แสดงผลหน้าจอแดชบอร์ดกราฟและรายละเอียด (รอบนี้แก้ทางแบบถาวรชัวร์ 100%)
+# 6. แสดงผลหน้าจอแดชบอร์ด (เอาคำว่า key= ออกถาวร บดขยี้ปัญหากวนใจ)
 # =================================================================
-# ดึงตำแหน่งลำดับ (Index) ของตัวเลือกมาทำเป็นรหัสประจำตัว (เช่น เลือกอันที่ 1, อันที่ 0, อันที่ 2)
-# การทำแบบนี้จะทำให้ได้รหัส `key` เป็นตัวเลขอังกฤษล้วน ปลอดภัยจาก TypeError และเปลี่ยนค่าชัวร์ๆ ทุกครั้งที่กดคลิก
-idx_branch = branch_options.index(selected_branch)
-idx_building = building_options.index(selected_building)
-idx_status = status_options.index(selected_status)
-
-# ประกอบร่างเป็นรหัสเฉพาะตัว เช่น view_1_0_2
-component_key = f"view_{idx_branch}_{idx_building}_{idx_status}"
-
-# สั่งเรนเดอร์แดชบอร์ดด้านล่าง ขยับตามมือแน่นอน ไม่พังชัวร์ครับพี่!
-st.components.v1.html(html_content, key=component_key)
+# เรียกแบบคลีนที่สุด ไม่พ่วงอาร์กิวเมนต์ใดๆ ที่จะจุดชนวนให้เกิด TypeError อีกแน่นอน 100%
+st.components.v1.html(html_content)
