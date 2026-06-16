@@ -134,4 +134,115 @@ with col7:
 
 
 # =================================================================
-# 4. กลไกการ Filter ข้อมูลตาม Data จริง (แก้ไข Syntax เรีย
+# 4. กลไกการ Filter ข้อมูลตาม Data จริง (แก้ไขจุดบั๊กตัวแปรเรียบร้อย)
+# =================================================================
+df_filtered = df_raw.copy()
+
+if selected_branch != 'ทั้งหมด': 
+    df_filtered = df_filtered[df_filtered['สาขา'] == selected_branch]
+if selected_building != 'ทั้งหมด': 
+    df_filtered = df_filtered[df_filtered['อาคาร'] == selected_building]
+if date_col and selected_date != 'ทั้งหมด': 
+    df_filtered = df_filtered[df_filtered[date_col] == selected_date]
+if selected_inspector != 'ทั้งหมด': 
+    df_filtered = df_filtered[df_filtered['ชื่อผู้ตรวจ'] == selected_inspector]
+if selected_task_group != 'ทั้งหมด': 
+    df_filtered = df_filtered[df_filtered['Task (group)'] == selected_task_group]
+if task_col and selected_task != 'ทั้งหมด': 
+    df_filtered = df_filtered[df_filtered[task_col] == selected_task]  # แก้งานตรงนี้ให้ดึงจากคอลัมน์จริงแล้ว
+if selected_status != 'ทั้งหมด': 
+    df_filtered = df_filtered[df_filtered['Status'] == selected_status]
+
+total_records = len(df_filtered)
+
+
+# =================================================================
+# 5. ส่วนแสดงผลยอดสรุป (KPI Cards)
+# =================================================================
+st.write("")
+unique_buildings = df_filtered['อาคาร'].nunique() if total_records > 0 else 0
+unique_rooms = df_filtered['หมายเลขห้อง'].nunique() if total_records > 0 else 0
+
+col_m1, col_m2, col_m3 = st.columns(3)
+with col_m1:
+    st.markdown(f'<div class="kpi-card"><p class="kpi-title">🏢 ความครอบคลุมในการดูแล</p><p class="kpi-value">{unique_buildings} อาคาร / {unique_rooms} ห้อง</p></div>', unsafe_allow_html=True)
+with col_m2:
+    st.markdown(f'<div class="kpi-card"><p class="kpi-title">📝 จำนวนรายการตรวจเช็คตามตัวกรอง</p><p class="kpi-value" style="color: #008080;">{total_records} รายการ</p></div>', unsafe_allow_html=True)
+with col_m3:
+    complete_count = len(df_filtered[df_filtered['Status'].str.lower() == 'complete'])
+    st.markdown(f'<div class="kpi-card"><p class="kpi-title">✅ Status ผ่าน (Complete)</p><p class="kpi-value" style="color: #2E7D32;">{complete_count} รายการ</p></div>', unsafe_allow_html=True)
+
+
+# =================================================================
+# 6. ส่วนเรนเดอร์กราฟวงกลมสรุปสัดส่วน (Donut Chart)
+# =================================================================
+st.write("")
+if total_records > 0:
+    st.subheader("🎯 สัดส่วนสถานะการตรวจเช็ค (Status)")
+    status_counts = df_filtered['Status'].value_counts().reset_index()
+    status_counts.columns = ['Status', 'จำนวน']
+    fig = px.pie(status_counts, values='จำนวน', names='Status', hole=0.4,
+                 color_discrete_sequence=['#2E7D32', '#C62828', '#1565C0', '#EF6C00'])
+    fig.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=300)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# =================================================================
+# 7. สร้างตาราง HTML หน้าตาเหมือนตัวอย่าง (ดึงข้อมูล Dynamic จาก Python)
+# =================================================================
+st.write("")
+st.subheader("📋 รายละเอียดบันทึกข้อมูลการตรวจเช็ค (หน้าตาตามสไตล์ HTML)")
+
+if total_records > 0:
+    html_table = """
+    <div class="custom-table-container">
+        <table class="custom-dashboard-table">
+            <thead>
+                <tr>
+                    <th>สาขา</th>
+                    <th>อาคาร</th>
+                    <th>หมายเลขห้อง</th>
+                    <th>วันที่ตรวจ</th>
+                    <th>หมวดหมู่งาน</th>
+                    <th>Task Detail</th>
+                    <th>ชื่อผู้ตรวจ</th>
+                    <th>Reason / ความผิดปกติ</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+    """
+    
+    for _, row in df_filtered.iterrows():
+        status_raw = str(row.get('Status', '')).strip()
+        status_lower = status_raw.lower()
+        
+        if 'complete' in status_lower:
+            status_html = f'<span class="status-badge status-complete">{status_raw}</span>'
+        elif 'pending' in status_lower or 'wait' in status_lower:
+            status_html = f'<span class="status-badge status-pending">{status_raw}</span>'
+        else:
+            status_html = f'<span class="status-badge status-error">{status_raw}</span>'
+            
+        html_table += f"""
+                <tr>
+                    <td>{row.get('สาขา', '-')}</td>
+                    <td>{row.get('อาคาร', '-')}</td>
+                    <td>{row.get('หมายเลขห้อง', '-')}</td>
+                    <td>{row.get('Date', '-')}</td>
+                    <td>{row.get('Task (group)', '-')}</td>
+                    <td>{row.get('Task Detail', row.get('Task', '-'))}</td>
+                    <td>{row.get('ชื่อผู้ตรวจ', '-')}</td>
+                    <td>{row.get('Reason', 'ปกติ')}</td>
+                    <td>{status_html}</td>
+                </tr>
+        """
+        
+    html_table += """
+            </tbody>
+        </table>
+    </div>
+    """
+    st.markdown(html_table, unsafe_allow_html=True)
+else:
+    st.info("💡 ไม่มีข้อมูลแสดงผลตามเงื่อนไขตัวกรอง")
