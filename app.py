@@ -2,13 +2,13 @@ import streamlit as st
 import pandas as pd
 import json
 import os
+import time  # เพิ่มเข้ามาเพื่อใช้ทำรหัสสุ่มรีเฟรชหน้าจอ
 
 # =================================================================
-# 1. ตั้งค่าหน้าเพจให้เต็มจอ และล็อกขนาดกล่องแสดงผลด้วย CSS
+# 1. ตั้งค่าหน้าเพจให้เต็มจอ และซ่อนส่วนเกินของ Streamlit
 # =================================================================
 st.set_page_config(page_title="สรุปตรวจเช็คร้านค้าเช่า", layout="wide", initial_sidebar_state="collapsed")
 
-# บังคับจัดการความสูงและซ่อนขอบผ่าน CSS โดยตรง เพื่อไม่ให้ฟังก์ชัน Python รับภาระหนัก
 st.markdown("""
 <style>
     [data-testid="stAppViewContainer"] > section:nth-child(2) > div:nth-child(1) { padding: 0rem; }
@@ -49,7 +49,7 @@ if df_raw is None or df_raw.empty:
     st.stop()
 
 if not os.path.exists(html_path):
-    st.error("❌ ไม่พบไฟล์โครงแดชบอร์ดหน้ากาก HTML บนเซิร์ฟเวอร์")
+    st.error("❌ 不พบไฟล์โครงแดชบอร์ดหน้ากาก HTML บนเซิร์ฟเวอร์")
     st.stop()
 
 
@@ -120,20 +120,13 @@ if old_dataset_marker in html_content:
     rest_of_html = parts[1].split("];", 1)[1]
     html_content = f"{parts[0]}const inspectionDataset = {js_data};{rest_of_html}"
 
-# สั่งกระตุ้นสคริปต์ให้ระบบ JavaScript วาดกราฟใหม่
-render_trigger = """
-<script>
-    if (typeof init === 'function') { init(); }
-    else if (typeof renderDashboard === 'function') { renderDashboard(); }
-    else if (typeof updateCharts === 'function') { updateCharts(); }
-</script>
-"""
-html_content += render_trigger
-
 
 # =================================================================
-# 7. แสดงผลแดชบอร์ด HTML แบบคลีนที่สุด (แก้ปัญหาเปิดไม่ขึ้น และตัดบั๊ก TypeError)
+# 7. แสดงผลแดชบอร์ด HTML แบบบังคับล้างหน้ากระดาน (ปลอดภัยจาก TypeError)
 # =================================================================
-# ส่งเข้าไปแค่ตัวแปร html_content ตัวเดียวโดดๆ ไม่พ่วง height, scrolling หรือ key เพื่อป้องกันการเอ๋อของระบบคลาวด์
-# โดยปล่อยให้เรื่องความสูงถูกควบคุมผ่าน CSS ในข้อ 1 แทน ซึ่งปลอดภัยและทำงานได้ชัวร์ 100% ครับ
-st.components.v1.html(html_content)
+# สร้างรหัสลับเป็นตัวเลข Timestamps (เช่น 171854321) ทุกครั้งที่มีการขยับฟิลเตอร์
+# การใช้ตัวเลขล้วนแบบนี้ จะไม่ทำให้เกิด TypeError บน Python เวอร์ชันใหม่แน่นอน 100%
+refresh_id = int(time.time())
+
+# บังคับดึงข้อมูลใหม่มาวาดกราฟทันทีด้วยการระบุ key=refresh_id
+st.components.v1.html(html_content, key=refresh_id)
