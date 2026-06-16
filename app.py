@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 
-# 1. ตั้งค่าหน้าเพจของ Streamlit ให้คลีนที่สุด (เพื่อส่งต่อให้หน้าจอ HTML แสดงผลเต็มๆ)
+# 1. ตั้งค่าหน้าเพจให้เต็มจอ
 st.set_page_config(page_title="สรุปตรวจเช็คร้านค้าเช่า", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
@@ -12,7 +12,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. อ่านไฟล์ Excel (ดึงมาทุกบรรทัดชัวร์ๆ ป้องกันค่าว่าง)
+# 2. อ่านไฟล์ Excel (ดึงมาทุกบรรทัดชัวร์ๆ)
 @st.cache_data
 def load_data():
     df = pd.read_excel("Data exemple.xlsx", sheet_name="Sheet1", dtype=str)
@@ -24,7 +24,7 @@ def load_data():
 df_raw = load_data()
 
 # =================================================================
-# 3. สร้าง Filter ด้วย Streamlit (แต่หน้าตาแดชบอร์ดจะใช้ตาม HTML ตัวอย่าง)
+# 3. สร้าง Filter หน้าสาขาด้วย Streamlit (เช่น เลือก สาขารัชดา)
 # =================================================================
 st.title("📊 ระบบสรุปตรวจเช็คร้านค้าเช่า")
 
@@ -40,18 +40,19 @@ with col_f3:
     selected_status = st.selectbox("เลือกสถานะ:", status_options)
 
 # =================================================================
-# 4. ประมวลผล Filter บนข้อมูล Excel จริง
+# 4. กรองข้อมูลใน Excel ทันที (สมมติเลือก รัชดา -> df_filtered จะเหลือแค่รัชดา)
 # =================================================================
 df_filtered = df_raw.copy()
 
 if selected_branch != 'ทั้งหมด':
     df_filtered = df_filtered[df_filtered['สาขา'] == selected_branch]
-if selected_building != 'ทั้งหมด':
-    df_filtered = df_filtered[df_filtered['อาคาร'] == selected_building]
+if selected_building != '健全': # ปรับตามเงื่อนไข 'ทั้งหมด'
+    if selected_building != 'ทั้งหมด':
+        df_filtered = df_filtered[df_filtered['อาคาร'] == selected_building]
 if selected_status != 'ทั้งหมด':
     df_filtered = df_filtered[df_filtered['Status'] == selected_status]
 
-# แปลงข้อมูล Excel ส่วนที่ผ่านการกรองแล้ว ให้กลายเป็นรูปแบบ JSON เพื่อพร้อมส่งให้ HTML ตัวอย่าง
+# แปลงข้อมูลสาขาที่ถูกกรองแล้วให้เป็น JSON
 records = []
 for _, row in df_filtered.iterrows():
     records.append({
@@ -73,24 +74,34 @@ js_data = json.dumps(records, ensure_ascii=False)
 
 
 # =================================================================
-# 5. เปิดไฟล์ HTML ตัวอย่าง แล้วเอาข้อมูลที่กรองจาก Excel ไปเสียบแทนที่
+# 5. ฉีดข้อมูลที่กรองแล้ว เข้าไปใน HTML และสั่งให้หน้าจอวาดใหม่ (Re-render)
 # =================================================================
-# (ตรวจสอบให้แน่ใจว่าไฟล์ชื่อตามนี้ วางอยู่ในโฟลเดอร์เดียวกับโค้ด Python นะครับ)
 with open("dashboard_tenant_store_inspection (1).html", "r", encoding="utf-8") as f:
     html_content = f.read()
 
-# เสียบก้อนข้อมูลจาก Excel เข้าไปในตัวแปรหลักของ HTML ตัวอย่าง
+# แทนที่ตัวแปรเก็บข้อมูลใน HTML ด้วยข้อมูลที่ผ่านฟิลเตอร์แล้ว
 old_dataset_marker = "const inspectionDataset = ["
 if old_dataset_marker in html_content:
     parts = html_content.split(old_dataset_marker)
     rest_of_html = parts[1].split("];", 1)[1]
-    # นำข้อมูลที่ผ่านฟิลเตอร์ (js_data) ไปแทนที่อันเก่าทันที
     html_content = f"{parts[0]}const inspectionDataset = {js_data};{rest_of_html}"
 
+# 🔥 โค้ดพิเศษ: สั่งให้ JavaScript ใน HTML ทำงานใหม่ทันทีเมื่อข้อมูลเปลี่ยน
+# โดยปกติใน HTML ตัวอย่างมักจะมีฟังก์ชันชื่อ init() หรือ render() หรือบรรทัดที่ใช้วาดกราฟตอนเปิดเว็บ
+# เราจะบังคับให้มันรันซ้ำอีกรอบตอนท้ายไฟล์เพื่ออัปเดตหน้าจอให้เปลี่ยนตามฟิลเตอร์
+render_trigger = """
+<script>
+    // สั่งให้ระบบใน HTML วาดตารางและกราฟใหม่ด้วยข้อมูลล่าสุดที่คัดกรองแล้ว
+    if (typeof init === 'function') { init(); }
+    else if (typeof renderDashboard === 'function') { renderDashboard(); }
+    else if (typeof updateCharts === 'function') { updateCharts(); }
+</script>
+"""
+html_content += render_trigger
+
 
 # =================================================================
-# 6. แสดงผลหน้าจอแดชบอร์ดสุดสวยตามสไตล์ HTML ตัวอย่างของคุณ
+# 6. แสดงผลหน้าจอแดชบอร์ดสุดสวย
 # =================================================================
 import streamlit.components.v1 as components
-# ตัวเลข 1200 คือความสูงหน้าจอ สามารถปรับเพิ่ม/ลดได้ตามความยาวของแดชบอร์ดตัวอย่างครับ
 components.html(html_content, height=1200, scrolling=True)
