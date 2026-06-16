@@ -1,64 +1,91 @@
 import streamlit as st
 import pandas as pd
-import json
+import numpy as np
 
 # 1. ตั้งค่าหน้าเพจให้เต็มจอ
 st.set_page_config(page_title="สรุปตรวจเช็คร้านค้าเช่า", layout="wide", initial_sidebar_state="collapsed")
 
-st.markdown("""
-<style>
-    [data-testid="stAppViewContainer"] > section:nth-child(2) > div:nth-child(1) { padding: 0rem; }
-    iframe { border: none !important; }
-</style>
-""", unsafe_allow_html=True)
+# ซ่อนพวกเมนูส่วนเกินของ Streamlit ออกไป
+hide_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    div.block-container {padding-top: 2rem;}
+    </style>
+"""
+st.markdown(hide_style, unsafe_allow_html=True)
 
-# 2. อ่านไฟล์ Excel (ปรับให้อ่านทุกคอลัมน์เป็น String เพื่อไม่ให้ข้อมูลบรรทัดไหนตกหล่น)
+# 2. ฟังก์ชันอ่านไฟล์ Excel (ดึงมาทุกบรรทัดชัวร์ๆ)
 @st.cache_data
 def load_data():
-    # บังคับดึงข้อมูลทุกช่องออกมาเป็นข้อความ (dtype=str) จะได้ไม่มีปัญหาเรื่อง Format วันที่หรือตัวเลขเพี้ยน
+    # บังคับให้อ่านเป็นตัวหนังสือ (String) ทุกช่อง ป้องกันข้อมูลเพี้ยนหรือตกหล่น
     df = pd.read_excel("Data exemple.xlsx", sheet_name="Sheet1", dtype=str)
-    
-    # จัดการเคลียร์ค่าว่าง (NaN) ในทุกๆ คอลัมน์ให้กลายเป็นช่องว่างธรรมดา หรือคำว่า 'ปกติ'
-    df = df.fillna('')
+    df = df.fillna('') # อุดรอยรั่วช่องว่าง
     if 'Reason' in df.columns:
-        # แทนที่ช่องว่างใน Reason ด้วยคำว่า 'ปกติ' ตามเงื่อนไขเดิมของคุณ
         df['Reason'] = df['Reason'].replace('', 'ปกติ')
     return df
 
-df = load_data()
+df_raw = load_data()
 
-# 3. แปลงข้อมูลจาก Excel ทุกบรรทัดให้กลายเป็นรูปแบบ JSON เพื่อส่งให้ HTML
-records = []
-for _, row in df.iterrows():
-    # อ่านข้อมูลทุกบรรทัดชัวร์ๆ โดยแปลงเป็นข้อความและตัดช่องว่างส่วนเกิน (strip)
-    records.append({
-        "branch": str(row.get('สาขา', '')).strip(),
-        "room": str(row.get('หมายเลขห้อง', '')).strip(),
-        "building": str(row.get('อาคาร', '')).strip(),
-        "date": str(row.get('Date', '')).strip(),
-        "month": str(row.get('Month of วันที่ตรวจ', 'June 2026')).strip(),
-        "taskGroup": str(row.get('Task (group)', '')).strip(),
-        "taskDetail": str(row.get('Task Detail', row.get('Task', ''))).strip(),
-        "inspector": str(row.get('ชื่อผู้ตรวจ', '')).strip(),
-        "reasonGroup": str(row.get('Reason', 'ปกติ')).strip(),
-        "status": str(row.get('Status', '')).strip(),
-        "approverName": str(row.get('ผู้อนุมัติในการตรวจ', 'สุวรรณ ก่อนนาค')).strip(),
-        "approverRole": str(row.get('ตำแหน่งผู้อนุมัติในการตรวจ', 'ซุปเปอร์ไวเซอร์')).strip()
-    })
 
-js_data = json.dumps(records, ensure_ascii=False)
+# ==========================================
+# 3. ส่วนสร้าง FILTER ด้านบนของ Dashboard
+# ==========================================
+st.title("📊 แดชบอร์ดสรุปตรวจเช็คร้านค้าเช่า")
 
-# 4. อ่านไฟล์ HTML ตามชื่อที่คุณระบุเป๊ะๆ
-with open("dashboard_tenant_store_inspection (1).html", "r", encoding="utf-8") as f:
-    html_content = f.read()
+# สร้างกล่อง Filter เรียงกัน 3 กล่องในแถวเดียว (สาขา, อาคาร, สถานะ)
+col_f1, col_f2, col_f3 = st.columns(3)
 
-# นำข้อมูลจริงจาก Excel (js_data) ไปเสียบแทนที่ตัวแปรเก่าใน HTML
-old_dataset_marker = "const inspectionDataset = ["
-if old_dataset_marker in html_content:
-    parts = html_content.split(old_dataset_marker)
-    rest_of_html = parts[1].split("];", 1)[1]
-    html_content = f"{parts[0]}const inspectionDataset = {js_data};{rest_of_html}"
+with col_f1:
+    # ดึงรายชื่อสาขาทั้งหมดที่มีใน Excel ออกมาทำตัวเลือก (บวกคำว่า 'ทั้งหมด' เข้าไป)
+    branch_options = ['ทั้งหมด'] + sorted(list(df_raw['สาขา'].unique()))
+    selected_branch = st.selectbox("เลือกสาขา:", branch_options)
 
-# 5. แสดงผลหน้าจอ
-import streamlit.components.v1 as components
-components.html(html_content, height=1200, scrolling=True)
+with col_f2:
+    building_options = ['ทั้งหมด'] + sorted(list(df_raw['อาคาร'].unique()))
+    selected_building = st.selectbox("เลือกอาคาร:", building_options)
+
+with col_f3:
+    status_options = ['ทั้งหมด'] + sorted(list(df_raw['Status'].unique()))
+    selected_status = st.selectbox("เลือกสถานะ:", status_options)
+
+
+# ==========================================
+# 4. ส่วนเชื่อมโยงข้อมูล (สั่งให้ Filter ทำงาน)
+# ==========================================
+# เริ่มต้นจากข้อมูลดิบทั้งหมด
+df_filtered = df_raw.copy()
+
+# ถ้าคนใช้งานเลือกสาขา เจาะจง (ไม่ใช่ 'ทั้งหมด') -> ให้กรองเอาเฉพาะสาขานั้น
+if selected_branch != 'ทั้งหมด':
+    df_filtered = df_filtered[df_filtered['สาขา'] == selected_branch]
+
+# ถ้าคนใช้งานเลือกอาคาร เจาะจง -> ให้กรองต่อจากสาขาเมื่อกี้
+if selected_building != 'ทั้งหมด':
+    df_filtered = df_filtered[df_filtered['อาคาร'] == selected_building]
+
+# ถ้าคนใช้งานเลือกสถานะ เจาะจง -> ให้กรองต่อเป็นขั้นสุดท้าย
+if selected_status != 'ทั้งหมด':
+    df_filtered = df_filtered[df_filtered['Status'] == selected_status]
+
+
+# ==========================================
+# 5. ส่วนแสดงผลบน DASHBOARD (จะเปลี่ยนตาม Filter อัตโนมัติ)
+# ==========================================
+st.markdown("---")
+
+# นับจำนวนข้อมูลที่กรองออกมาได้จริงเพื่อเอาไปโชว์เป็นตัวเลขสรุป
+total_inspections = len(df_filtered)
+success_count = len(df_filtered[df_filtered['Status'] == 'Complete']) # สมมติว่าใช้คำว่า Complete
+
+# แสดงตัวเลขสรุป (Metrics)
+m1, m2 = st.columns(2)
+with m1:
+    st.metric(label="จำนวนรายการที่ตรวจทั้งหมด (ตาม Filter)", value=f"{total_inspections} รายการ")
+with m2:
+    st.metric(label="ตรวจเสร็จสิ้นแล้ว", value=f"{success_count} รายการ")
+
+st.markdown("### 📋 ตารางข้อมูลตรวจเช็คที่ผ่านการกรองแล้ว")
+# แสดงตารางข้อมูลจริงที่แปรผันตามการกด Filter ของผู้ใช้งาน
+st.dataframe(df_filtered, use_container_width=True)
