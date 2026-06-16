@@ -12,38 +12,43 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. อ่านไฟล์ Excel (ดึงข้อมูลจริงทั้งหมดมาใช้)
+# 2. อ่านไฟล์ Excel (ปรับให้อ่านทุกคอลัมน์เป็น String เพื่อไม่ให้ข้อมูลบรรทัดไหนตกหล่น)
 @st.cache_data
 def load_data():
-    df = pd.read_excel("Data exemple.xlsx", sheet_name="Sheet1")
+    # บังคับดึงข้อมูลทุกช่องออกมาเป็นข้อความ (dtype=str) จะได้ไม่มีปัญหาเรื่อง Format วันที่หรือตัวเลขเพี้ยน
+    df = pd.read_excel("Data exemple.xlsx", sheet_name="Sheet1", dtype=str)
+    
+    # จัดการเคลียร์ค่าว่าง (NaN) ในทุกๆ คอลัมน์ให้กลายเป็นช่องว่างธรรมดา หรือคำว่า 'ปกติ'
+    df = df.fillna('')
     if 'Reason' in df.columns:
-        df['Reason'] = df['Reason'].fillna('ปกติ')
+        # แทนที่ช่องว่างใน Reason ด้วยคำว่า 'ปกติ' ตามเงื่อนไขเดิมของคุณ
+        df['Reason'] = df['Reason'].replace('', 'ปกติ')
     return df
 
 df = load_data()
 
-# 3. แปลงข้อมูลจาก Excel ให้กลายเป็นรูปแบบ JSON เพื่อส่งให้ HTML
+# 3. แปลงข้อมูลจาก Excel ทุกบรรทัดให้กลายเป็นรูปแบบ JSON เพื่อส่งให้ HTML
 records = []
 for _, row in df.iterrows():
+    # อ่านข้อมูลทุกบรรทัดชัวร์ๆ โดยแปลงเป็นข้อความและตัดช่องว่างส่วนเกิน (strip)
     records.append({
-        "branch": str(row.get('สาขา', '')),
-        "room": str(row.get('หมายเลขห้อง', '')),
-        "building": str(row.get('อาคาร', '')),
-        "date": str(row.get('Date', '')),
-        "month": str(row.get('Month of วันที่ตรวจ', 'June 2026')),
-        "taskGroup": str(row.get('Task (group)', '')),
-        "taskDetail": str(row.get('Task Detail', row.get('Task', ''))),
-        "inspector": str(row.get('ชื่อผู้ตรวจ', '')),
-        "reasonGroup": str(row.get('Reason', 'ปกติ')),
-        "status": str(row.get('Status', '')),
-        "approverName": str(row.get('ผู้อนุมัติในการตรวจ', 'สุวรรณ ก่อนนาค')),
-        "approverRole": str(row.get('ตำแหน่งผู้อนุมัติในการตรวจ', 'ซุปเปอร์ไวเซอร์'))
+        "branch": str(row.get('สาขา', '')).strip(),
+        "room": str(row.get('หมายเลขห้อง', '')).strip(),
+        "building": str(row.get('อาคาร', '')).strip(),
+        "date": str(row.get('Date', '')).strip(),
+        "month": str(row.get('Month of วันที่ตรวจ', 'June 2026')).strip(),
+        "taskGroup": str(row.get('Task (group)', '')).strip(),
+        "taskDetail": str(row.get('Task Detail', row.get('Task', ''))).strip(),
+        "inspector": str(row.get('ชื่อผู้ตรวจ', '')).strip(),
+        "reasonGroup": str(row.get('Reason', 'ปกติ')).strip(),
+        "status": str(row.get('Status', '')).strip(),
+        "approverName": str(row.get('ผู้อนุมัติในการตรวจ', 'สุวรรณ ก่อนนาค')).strip(),
+        "approverRole": str(row.get('ตำแหน่งผู้อนุมัติในการตรวจ', 'ซุปเปอร์ไวเซอร์')).strip()
     })
 
 js_data = json.dumps(records, ensure_ascii=False)
 
 # 4. อ่านไฟล์ HTML ตามชื่อที่คุณระบุเป๊ะๆ
-# แก้ไขปัญหาชื่อไฟล์ที่มีช่องว่างและวงเล็บเรียบร้อยครับ
 with open("dashboard_tenant_store_inspection (1).html", "r", encoding="utf-8") as f:
     html_content = f.read()
 
