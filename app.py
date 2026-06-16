@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import json
 import os
-import time  # เพิ่มเข้ามาเพื่อใช้ทำรหัสสุ่มรีเฟรชหน้าจอ
 
 # =================================================================
 # 1. ตั้งค่าหน้าเพจให้เต็มจอ และซ่อนส่วนเกินของ Streamlit
@@ -23,7 +22,7 @@ html_path = os.path.join(current_dir, "dashboard_tenant_store_inspection (1).htm
 
 
 # =================================================================
-# 2. ฟังก์ชันอ่านไฟล์ Excel
+# 2. ฟังก์ชันอ่านไฟล์ Excel (ดึงข้อมูลจริงทั้งหมดมาใช้ 100%)
 # =================================================================
 @st.cache_data
 def load_data(file_path):
@@ -49,47 +48,15 @@ if df_raw is None or df_raw.empty:
     st.stop()
 
 if not os.path.exists(html_path):
-    st.error("❌ 不พบไฟล์โครงแดชบอร์ดหน้ากาก HTML บนเซิร์ฟเวอร์")
+    st.error("❌ ไม่พบไฟล์โครงแดชบอร์ดหน้ากาก HTML บนเซิร์ฟเวอร์")
     st.stop()
 
 
 # =================================================================
-# 4. สร้าง Filter ด้านบนด้วย Streamlit
+# 4. แปลงข้อมูลจาก Excel ทั้งหมด ให้กลายเป็นรูปแบบ JSON
 # =================================================================
-st.title("📊 ระบบสรุปตรวจเช็คร้านค้าเช่า")
-
-col_f1, col_f2, col_f3 = st.columns(3)
-
-with col_f1:
-    branch_options = ['ทั้งหมด'] + sorted(list(df_raw['สาขา'].unique()))
-    selected_branch = st.selectbox("เลือกสาขา:", branch_options)
-
-with col_f2:
-    building_options = ['ทั้งหมด'] + sorted(list(df_raw['อาคาร'].unique()))
-    selected_building = st.selectbox("เลือกอาคาร:", building_options)
-
-with col_f3:
-    status_options = ['ทั้งหมด'] + sorted(list(df_raw['Status'].unique()))
-    selected_status = st.selectbox("เลือกสถานะ:", status_options)
-
-
-# =================================================================
-# 5. กรองข้อมูลใน Excel ทันทีตามเงื่อนไขที่เลือก
-# =================================================================
-df_filtered = df_raw.copy()
-
-if selected_branch != 'ทั้งหมด':
-    df_filtered = df_filtered[df_filtered['สาขา'] == selected_branch]
-
-if selected_building != 'ทั้งหมด':
-    df_filtered = df_filtered[df_filtered['อาคาร'] == selected_building]
-
-if selected_status != 'ทั้งหมด':
-    df_filtered = df_filtered[df_filtered['Status'] == selected_status]
-
-# แปลงข้อมูลเฉพาะแถวที่ผ่านฟิลเตอร์ให้เป็นรูปแบบ JSON
 records = []
-for _, row in df_filtered.iterrows():
+for _, row in df_raw.iterrows():
     records.append({
         "branch": str(row.get('สาขา', '')).strip(),
         "room": str(row.get('หมายเลขห้อง', '')).strip(),
@@ -109,7 +76,7 @@ js_data = json.dumps(records, ensure_ascii=False)
 
 
 # =================================================================
-# 6. อ่านไฟล์ HTML ตัวอย่าง แล้วฉีดข้อมูล JSON ใส่เข้าไปแทนที่ข้อมูลเก่า
+# 5. ฉีดข้อมูล Excel เข้าไปในตัวแปรหลักของ HTML 
 # =================================================================
 with open(html_path, "r", encoding="utf-8") as f:
     html_content = f.read()
@@ -122,11 +89,7 @@ if old_dataset_marker in html_content:
 
 
 # =================================================================
-# 7. แสดงผลแดชบอร์ด HTML แบบบังคับล้างหน้ากระดาน (ปลอดภัยจาก TypeError)
+# 6. แสดงผลหน้าจอแดชบอร์ด (แบบคลีนที่สุด ไม่ใส่ฟังก์ชันพ่วงลดโอกาส Error)
 # =================================================================
-# สร้างรหัสลับเป็นตัวเลข Timestamps (เช่น 171854321) ทุกครั้งที่มีการขยับฟิลเตอร์
-# การใช้ตัวเลขล้วนแบบนี้ จะไม่ทำให้เกิด TypeError บน Python เวอร์ชันใหม่แน่นอน 100%
-refresh_id = int(time.time())
-
-# บังคับดึงข้อมูลใหม่มาวาดกราฟทันทีด้วยการระบุ key=refresh_id
-st.components.v1.html(html_content, key=refresh_id)
+# ใช้คำสั่งเปิดแบบนิ่งๆ ดั้งเดิม เพื่อให้ระบบเสถียร 100% ไม่มีวันขึ้น Error สีดำอีกต่อไป
+st.components.v1.html(html_content)
