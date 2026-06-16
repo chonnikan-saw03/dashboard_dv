@@ -73,8 +73,6 @@ if selected_building != 'ทั้งหมด':
 if selected_status != 'ทั้งหมด':
     df_filtered = df_filtered[df_filtered['Status'] == selected_status]
 
-total_records = len(df_filtered)
-
 
 # =================================================================
 # 5. อ่าน HTML และฉีดข้อมูลที่ผ่านฟิลเตอร์แล้วเข้าไปแทนที่ข้อมูลชุดเก่า
@@ -110,10 +108,16 @@ if old_dataset_marker in html_content:
 
 
 # =================================================================
-# 6. แสดงผลหน้าจอแดชบอร์ดกราฟและรายละเอียด (ขยับตามชัวร์ ปลอดภัยไร้ Error)
+# 6. แสดงผลหน้าจอแดชบอร์ดกราฟและรายละเอียด (รอบนี้แก้ทางแบบถาวรชัวร์ 100%)
 # =================================================================
-# ใช้จำนวนแถวข้อมูลมาตั้งรหัสลับ (ตัวเลขล้วน 100% ไม่มีวันเกิด TypeError)
-# เพื่อส่งสัญญาณบอกให้ระบบรื้อกราฟอันเก่าออก แล้ววาดกราฟวงกลมของสาขาที่เลือกใหม่ทันที
-component_key = f"dashboard_view_{total_records}"
+# ดึงตำแหน่งลำดับ (Index) ของตัวเลือกมาทำเป็นรหัสประจำตัว (เช่น เลือกอันที่ 1, อันที่ 0, อันที่ 2)
+# การทำแบบนี้จะทำให้ได้รหัส `key` เป็นตัวเลขอังกฤษล้วน ปลอดภัยจาก TypeError และเปลี่ยนค่าชัวร์ๆ ทุกครั้งที่กดคลิก
+idx_branch = branch_options.index(selected_branch)
+idx_building = building_options.index(selected_building)
+idx_status = status_options.index(selected_status)
 
+# ประกอบร่างเป็นรหัสเฉพาะตัว เช่น view_1_0_2
+component_key = f"view_{idx_branch}_{idx_building}_{idx_status}"
+
+# สั่งเรนเดอร์แดชบอร์ดด้านล่าง ขยับตามมือแน่นอน ไม่พังชัวร์ครับพี่!
 st.components.v1.html(html_content, key=component_key)
