@@ -99,9 +99,18 @@ render_trigger = """
 """
 html_content += render_trigger
 
+# =================================================================
+# 6. แสดงผลหน้าจอแดชบอร์ด (เพิ่มระบบบังคับรีเฟรชหน้าจอเมื่อเปลี่ยน Filter)
+# =================================================================
+import streamlit.components.v1 as components
 
-# =================================================================
-# 6. แสดงผลหน้าจอแดชบอร์ดสุดสวย
-# =================================================================
+# สร้าง "รหัสลับ (Key)" ขึ้นมา โดยผสมคำจากฟิลเตอร์ที่เลือก
+# ตัวอย่างเช่น ถ้าเลือก รัชดา รหัสจะเป็น "รัชดา_ทั้งหมด_ทั้งหมด"
+# ถ้าเปลี่ยนฟิลเตอร์ รหัสนี้จะเปลี่ยนทันที
+component_key = f"{selected_branch}_{selected_building}_{selected_status}"
+
+# ใส่ key=component_key เข้าไปที่ตัว components.html
+# เมื่อรหัสลับเปลี่ยน Streamlit จะบังคับให้หน้าจอ HTML ลบภาพเก่าและวาดภาพใหม่ด้วยข้อมูลปัจจุบันทันที!
+components.html(html_content, height=1200, scrolling=True, key=component_key)
 import streamlit.components.v1 as components
 components.html(html_content, height=1200, scrolling=True)
